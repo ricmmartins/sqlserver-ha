@@ -2,6 +2,10 @@
 
 This repository contains scripts and documentation for deploying and validating a SQL Server High Availability (HA) solution in Azure using Virtual Machines. The solution leverages Azure Availability Sets and SQL Server Always On Availability Groups.
 
+> **Disclaimer**  
+> This content was created by Microsoft employees for demonstration and lab purposes only. It is not an official Microsoft package, has not been tested on all supported configurations, and is not intended for production use. Use it at your own risk and discretion.
+
+
 ## Repository Structure
 
 ```bash
