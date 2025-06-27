@@ -43,7 +43,7 @@ register_sql_vm() {
     while [ $attempt -le $retries ]; do
         log "Registering SQL VM $vm_name (Attempt $attempt of $retries)"
         
-        if az sql vm register \
+        if az sql vm create \
             --name $vm_name \
             --resource-group $RESOURCE_GROUP \
             --license-type PAYG \
@@ -152,6 +152,42 @@ az keyvault create \
   --enabled-for-deployment true \
   --sku standard \
   --tags $TAGS
+
+# Get current user's object ID - using 'id' instead of 'objectId'
+log "Getting current user ID for role assignment..."
+USER_OBJECT_ID=$(az ad signed-in-user show --query id -o tsv)
+
+# Check if USER_OBJECT_ID was retrieved successfully
+if [ -z "$USER_OBJECT_ID" ]; then
+    log "Failed to get user object ID. Trying alternative method..."
+    # Try to get the user principal name instead
+    USER_PRINCIPAL=$(az account show --query user.name -o tsv)
+    
+    if [ -n "$USER_PRINCIPAL" ]; then
+        log "Using user principal: $USER_PRINCIPAL"
+        # Use the principal name instead of object ID
+        az role assignment create \
+          --role "Key Vault Secrets Officer" \
+          --assignee "$USER_PRINCIPAL" \
+          --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.KeyVault/vaults/$KV_NAME"
+    else
+        log "ERROR: Could not identify the current user for role assignment"
+        exit 1
+    fi
+else
+    log "User Object ID: $USER_OBJECT_ID"
+    
+    # Create the role assignment using object ID
+    az role assignment create \
+      --role "Key Vault Secrets Officer" \
+      --assignee "$USER_OBJECT_ID" \
+      --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.KeyVault/vaults/$KV_NAME"
+fi
+
+# Waiting for RBAC propagation
+log "Waiting 30 seconds for RBAC propagation..."
+sleep 30
+
 
 # Store SQL admin credentials in Key Vault
 log "Storing credentials in Key Vault..."
