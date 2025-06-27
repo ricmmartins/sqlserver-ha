@@ -39,7 +39,6 @@ The [deploy-sql-ha.sh](scripts/deploy-sql-ha.sh) fully automates the deployment 
    - NICs with accelerated networking enabled for performance  
    - Premium SSD Managed Disks for OS, data, logs, and tempdb (optimized for SQL workloads)  
    - Public IPs (static, standard SKU) for each VM  
-   - Azure Backup Recovery Services Vault with daily backup policy for each VM  
    - Azure Monitor Action Group and CPU alert rules for both VMs  
    - Resource lock to prevent accidental deletion  
    - Deployment variable file for easy reuse of environment details  
@@ -102,11 +101,9 @@ This guide helps you validate your SQL Server High Availability deployment in Az
 - Explicitly allow AG endpoint traffic (port 5022) in NSGs
 
 ### 4. Manageability & Monitoring
-- Enable Azure Backup with a policy for daily VM backups
 - Configure Azure Monitor for SQL insights and key metrics (CPU, memory, storage, AG health)
 - Set up alerts for performance and availability events
 - Use SQL Server Extended Events for advanced performance monitoring
-- Implement automated backup verification
 - Consistent resource tagging for tracking and automation
 - Detailed logging for every deployment step
 
@@ -139,6 +136,7 @@ While this project demonstrates a reference high-availability SQL Server setup, 
   - Implement Just-In-Time (JIT) VM access and Privileged Identity Management (PIM) for admin operations.
 
 - **Backup and DR:**  
+  - Enable Azure Backup with a policy for daily VM backups
   - Define and test regular backup and restore strategies.
   - Consider Geo-Redundant backup vaults and geo-replication for business-critical data.
   - Regularly test failover and restore procedures.
