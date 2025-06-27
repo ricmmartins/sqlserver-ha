@@ -41,12 +41,10 @@ The [deploy-sql-ha.sh](scripts/deploy-sql-ha.sh) fully automates the deployment 
    - Deployment variable file for easy reuse of environment details  
 
 2. **Configure SQL Server Availability Group**
-
-After deploying the SQL VMs, set up the Availability Group with the [setup-availability-group.sh](scripts/setup-availability-group.sh) script.
+   - After deploying the SQL VMs, set up the Availability Group with the [setup-availability-group.sh](scripts/setup-availability-group.sh) script.
 
 3. **Validate Your Deployment**
-
-After setting up the environment, validate it using the [validate-ha-deployment.sh](scripts/validate-ha-deployment.sh) script.
+   - After setting up the environment, validate it using the [validate-ha-deployment.sh](scripts/validate-ha-deployment.sh) script.
 
 ---
 
