@@ -46,49 +46,6 @@ The [deploy-sql-ha.sh](scripts/deploy-sql-ha.sh) fully automates the deployment 
 3. **Validate Your Deployment**
    - After setting up the environment, validate it using the [validate-ha-deployment.sh](scripts/validate-ha-deployment.sh) script.
 
----
-
-### **Azure Best Practices Implemented**
-
-#### 1. Security
-
-- Credentials stored in Azure Key Vault — never in code or output  
-- NSG rules scoped to least privilege for SQL, RDP, and AG  
-- Resource lock to prevent accidental resource deletion  
-- Secure, random password generated for SQL admin  
-
-#### 2. Performance
-
-- Accelerated networking enabled for low-latency network traffic  
-- Disk caching settings optimized per workload:  
-  - ReadOnly for data  
-  - None for logs  
-  - ReadWrite for tempdb  
-- Premium SSD storage used across all disks  
-- Dedicated disks for OS, SQL data, logs, and tempdb for best throughput  
-
-#### 3. High Availability
-
-- Availability Set ensures VMs are spread across fault/update domains  
-- SQL IaaS Agent Extension registration (with retry logic for reliability)  
-- NSG rules explicitly allow AG endpoint traffic on port 5022  
-
-#### 4. Manageability & Monitoring
-
-- Azure Backup enabled and configured with policy for daily VM backup  
-- Azure Monitor alerting set up for CPU spikes (customizable as needed)  
-- Consistent resource tagging for easy tracking and automation  
-- Detailed log output for every deployment step  
-
-#### 5. Deployment Reliability
-
-- Script is idempotent and uses robust error handling (`set -e`)  
-- Retry logic for transient Azure API failures  
-- Wait for RBAC propagation before storing secrets  
-- All critical deployment values exported for future scripts or teardown  
-
----
-
 ## Detailed Validation Guide
 
 This guide helps you validate your SQL Server High Availability deployment in Azure. See [docs/validation-guide.md](docs/validation-guide.md) for detailed instructions.
@@ -112,27 +69,47 @@ This guide helps you validate your SQL Server High Availability deployment in Az
    - Perform manual failover between replicas
    - Simulate node failures and observe automatic failover
 
-## Best Practices
+## Azure SQL Server VM Best Practices Implemented
 
-For Performance and Availability
-- Use Premium SSDs for SQL Server data, log, and TempDB files
-- Separate data and log files onto different disks
-- Place TempDB on the local SSD (D:) drive for better performance
-- Configure proper autogrowth settings for database files
-- Use properly sized VMs with adequate memory for SQL Server's buffer pool
+### 1. Security
+- **Store credentials in Azure Key Vault** — never in code or output
+- **Use managed identities** for authentication between services
+- **Implement Network Security Groups (NSGs)** with least-privilege access; scope rules only to required ports (SQL, RDP, AG)
+- **Enable Transparent Data Encryption (TDE)** for databases
+- **Use Azure Private Link** for secure connectivity to services
+- **Resource lock** to prevent accidental resource deletion
+- **Generate secure, random passwords** for SQL admin accounts
 
-For Security
-- Store credentials in Azure Key Vault
-- Use managed identities for authentication between services
-- Implement network security groups with least-privilege access
-- Enable Transparent Data Encryption (TDE) for databases
-- Use Azure Private Link for secure connectivity
+### 2. Performance
+- **Use Premium SSDs** for SQL Server data, log, and TempDB files
+- **Separate data, log, and TempDB files** onto dedicated disks for best throughput
+- **Place TempDB on the local SSD (D:) drive** for optimal performance
+- **Configure proper autogrowth settings** for database files
+- **Size VMs appropriately** with adequate memory for SQL Server's buffer pool
+- **Enable accelerated networking** for low-latency traffic
+- **Optimize disk caching** per workload:
+  - *ReadOnly* for data disks
+  - *None* for log disks
+  - *ReadWrite* for TempDB
 
-For Monitoring
-- Configure Azure Monitor for SQL insights
-- Set up alerts for key metrics (CPU, memory, storage, AG health)
-- Use SQL Server Extended Events for performance monitoring
-- Implement automated backup verification
+### 3. High Availability
+- **Deploy VMs in an Availability Set** to spread across fault and update domains
+- **Register VMs with the SQL IaaS Agent Extension** (use retry logic for reliability)
+- **Explicitly allow AG endpoint traffic (port 5022) in NSGs**
+
+### 4. Manageability & Monitoring
+- **Enable Azure Backup** with a policy for daily VM backups
+- **Configure Azure Monitor** for SQL insights and key metrics (CPU, memory, storage, AG health)
+- **Set up alerts** for performance and availability events
+- **Use SQL Server Extended Events** for advanced performance monitoring
+- **Implement automated backup verification**
+- **Consistent resource tagging** for tracking and automation
+- **Detailed logging** for every deployment step
+
+### 5. Deployment Reliability
+- **Idempotent, robust scripting** (e.g., `set -e`, retry logic for transient Azure API failures)
+- **Wait for RBAC propagation** before storing secrets in Key Vault
+- **Export critical deployment values** for use in future automation or teardown
 
 ## Troubleshooting
 For common issues and solutions, refer to [docs/troubleshooting.md](docs/troubleshooting.md).
