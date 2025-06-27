@@ -26,20 +26,19 @@ This repository contains scripts and documentation for deploying and validating 
 
 1. **Deploy SQL Server VMs**
 The [deploy-sql-ha.sh](scripts/deploy-sql-ha.sh) fully automates the deployment of a production-ready, highly available SQL Server environment on Azure. Here’s what the script sets up:
-   - Verify fault domain and update domain configuration
-   - **Resource Group** with detailed tags for ownership and cost management  
-   - **Virtual Network (VNet)** and **subnet** for secure isolation  
-   - **Network Security Group (NSG)** with rules for RDP, SQL, and AG endpoints  
-   - **Availability Set** for VM fault domain and update domain separation  
-   - **Azure Key Vault** for secure credential storage  
-   - **Two SQL Server VMs** (Windows + SQL 2019 Standard), fully registered with the SQL IaaS Agent Extension  
-   - **NICs** with accelerated networking enabled for performance  
-   - **Premium SSD Managed Disks** for OS, data, logs, and tempdb (optimized for SQL workloads)  
-   - **Public IPs** (static, standard SKU) for each VM  
-   - **Azure Backup Recovery Services Vault** with daily backup policy for each VM  
-   - **Azure Monitor Action Group** and CPU alert rules for both VMs  
-   - **Resource lock** to prevent accidental deletion  
-   - **Deployment variable file** for easy reuse of environment details  
+   - Resource Group with detailed tags for ownership and cost management  
+   - Virtual Network (VNet) and subnet for secure isolation  
+   - Network Security Group (NSG) with rules for RDP, SQL, and AG endpoints  
+   - Availability Set for VM fault domain and update domain separation  
+   - Azure Key Vault for secure credential storage  
+   - Two SQL Server VMs (Windows + SQL 2019 Standard), fully registered with the SQL IaaS Agent Extension  
+   - NICs with accelerated networking enabled for performance  
+   - Premium SSD Managed Disks for OS, data, logs, and tempdb (optimized for SQL workloads)  
+   - Public IPs (static, standard SKU) for each VM  
+   - Azure Backup Recovery Services Vault with daily backup policy for each VM  
+   - Azure Monitor Action Group and CPU alert rules for both VMs  
+   - Resource lock to prevent accidental deletion  
+   - Deployment variable file for easy reuse of environment details  
 
 2. **Configure SQL Server Availability Group**
 
