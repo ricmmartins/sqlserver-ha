@@ -25,7 +25,7 @@ This repository contains scripts and documentation for deploying and validating 
 ## Deployment Process
 
 1. Deploy SQL Server VMs
-The deploy-sql-ha.sh script creates:
+The [deploy-sql-ha.sh](scripts/deploy-sql-ha.sh) script creates:
 
 - Resource group
 - Virtual network and subnet
