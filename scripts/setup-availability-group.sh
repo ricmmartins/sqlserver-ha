@@ -24,8 +24,9 @@ log() {
 log "Starting SQL Server Availability Group setup"
 
 # Retrieve SQL credentials from Key Vault
-ADMIN_USERNAME=$(az keyvault secret show --vault-name $KV_NAME --name SQLAdminUsername --query value -o tsv)
-ADMIN_PASSWORD=$(az keyvault secret show --vault-name $KV_NAME --name SQLAdminPassword --query value -o tsv)
+log "Retrieving credentials from Key Vault..."
+ADMIN_USERNAME=$(az keyvault secret show --vault-name $KV_NAME --name SqlAdminUsername --query value -o tsv)
+ADMIN_PASSWORD=$(az keyvault secret show --vault-name $KV_NAME --name SqlAdminPassword --query value -o tsv)
 
 # 1. Create Internal Load Balancer
 log "Creating internal load balancer for SQL AG..."
@@ -81,22 +82,39 @@ for i in 1 2; do
     --address-pool "BackendPool"
 done
 
-# 4. Create the SQL Server Availability Group configuration
+# 4. Create a storage account for the SQL AG
+STORAGE_ACCOUNT_NAME="sqlhawitstorage$(date +%s)"
+log "Creating storage account ${STORAGE_ACCOUNT_NAME}..."
+az storage account create \
+  --name $STORAGE_ACCOUNT_NAME \
+  --resource-group $RESOURCE_GROUP \
+  --location $LOCATION \
+  --sku Standard_LRS \
+  --kind StorageV2
+
+# Get storage account key
+STORAGE_KEY=$(az storage account keys list \
+  --resource-group $RESOURCE_GROUP \
+  --account-name $STORAGE_ACCOUNT_NAME \
+  --query "[0].value" -o tsv)
+
+# 5. Create the SQL Server Availability Group configuration
 log "Creating SQL Server Availability Group configuration..."
 az sql vm group create \
   --name $AG_NAME \
   --resource-group $RESOURCE_GROUP \
   --location $LOCATION \
+  --image-offer "SQL2019-WS2022" \
+  --image-sku "Standard" \
+  --domain-fqdn "WORKGROUP" \
   --bootstrap-account $ADMIN_USERNAME \
   --password "$ADMIN_PASSWORD" \
-  --sql-image-offer SQL2019-WS2022 \
-  --sql-image-sku Standard \
-  --domain-fqdn "WORKGROUP" \
-  --operator-account $ADMIN_USERNAME \
-  --service-account $ADMIN_USERNAME \
-  --sql-service-account-password "$ADMIN_PASSWORD"
+  --operator-acc $ADMIN_USERNAME \
+  --service-acc $ADMIN_USERNAME \
+  --sa-key "$STORAGE_KEY" \
+  --storage-account "https://${STORAGE_ACCOUNT_NAME}.blob.core.windows.net/"
 
-# 5. Add the SQL VMs to the Availability Group
+# 6. Add the SQL VMs to the Availability Group
 log "Adding SQL VMs to the availability group..."
 for i in 1 2; do
   VM_NAME="${VM_PREFIX}${i}"
@@ -109,7 +127,7 @@ for i in 1 2; do
     --location $LOCATION
 done
 
-# 6. Create the availability group listener
+# 7. Create the availability group listener
 log "Creating Availability Group listener..."
 az sql vm ag-listener create \
   --resource-group $RESOURCE_GROUP \
