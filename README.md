@@ -25,13 +25,66 @@ This repository contains scripts and documentation for deploying and validating 
 ## Deployment Process
 
 1. **Deploy SQL Server VMs**
-The [deploy-sql-ha.sh](scripts/deploy-sql-ha.sh) script creates:
+The [deploy-sql-ha.sh](scripts/deploy-sql-ha.sh) fully automates the deployment of a production-ready, highly available SQL Server environment on Azure. Here’s what the script sets up and the Azure best practices it follows:
 
-- Resource group
-- Virtual network and subnet
-- Network security group with required rules
-- Availability Set for high availability
-- Two SQL Server VMs registered with SQL IaaS Agent Extension
+### **Resources Created**
+
+- **Resource Group** with detailed tags for ownership and cost management  
+- **Virtual Network (VNet)** and **subnet** for secure isolation  
+- **Network Security Group (NSG)** with rules for RDP, SQL, and AG endpoints  
+- **Availability Set** for VM fault domain and update domain separation  
+- **Azure Key Vault** for secure credential storage  
+- **Two SQL Server VMs** (Windows + SQL 2019 Standard), fully registered with the SQL IaaS Agent Extension  
+- **NICs** with accelerated networking enabled for performance  
+- **Premium SSD Managed Disks** for OS, data, logs, and tempdb (optimized for SQL workloads)  
+- **Public IPs** (static, standard SKU) for each VM  
+- **Azure Backup Recovery Services Vault** with daily backup policy for each VM  
+- **Azure Monitor Action Group** and CPU alert rules for both VMs  
+- **Resource lock** to prevent accidental deletion  
+- **Deployment variable file** for easy reuse of environment details  
+
+---
+
+### **Azure Best Practices Implemented**
+
+#### 1. Security
+
+- Credentials stored in Azure Key Vault — never in code or output  
+- NSG rules scoped to least privilege for SQL, RDP, and AG  
+- Resource lock to prevent accidental resource deletion  
+- Secure, random password generated for SQL admin  
+
+#### 2. Performance
+
+- Accelerated networking enabled for low-latency network traffic  
+- Disk caching settings optimized per workload:  
+  - ReadOnly for data  
+  - None for logs  
+  - ReadWrite for tempdb  
+- Premium SSD storage used across all disks  
+- Dedicated disks for OS, SQL data, logs, and tempdb for best throughput  
+
+#### 3. High Availability
+
+- Availability Set ensures VMs are spread across fault/update domains  
+- SQL IaaS Agent Extension registration (with retry logic for reliability)  
+- NSG rules explicitly allow AG endpoint traffic on port 5022  
+
+#### 4. Manageability & Monitoring
+
+- Azure Backup enabled and configured with policy for daily VM backup  
+- Azure Monitor alerting set up for CPU spikes (customizable as needed)  
+- Consistent resource tagging for easy tracking and automation  
+- Detailed log output for every deployment step  
+
+#### 5. Deployment Reliability
+
+- Script is idempotent and uses robust error handling (`set -e`)  
+- Retry logic for transient Azure API failures  
+- Wait for RBAC propagation before storing secrets  
+- All critical deployment values exported for future scripts or teardown  
+
+---
 
 2. **Configure SQL Server Availability Group**
 
