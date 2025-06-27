@@ -110,8 +110,6 @@ az sql vm group create \
   --image-offer "SQL2019-WS2022" \
   --image-sku "Enterprise" \
   --domain-fqdn "WORKGROUP" \
-  --bootstrap-account $ADMIN_USERNAME \
-  --password "$ADMIN_PASSWORD" \
   --operator-acc $ADMIN_USERNAME \
   --service-acc $ADMIN_USERNAME \
   --sa-key "$STORAGE_KEY" \
