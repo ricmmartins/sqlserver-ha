@@ -57,6 +57,7 @@ Get-Service -Name ClusSvc
 
 ```powershell
 Get-NetFirewallRule | Where-Object {$_.DisplayGroup -like "*Clustering*"}
+```
 
 Resolution:
 
@@ -66,7 +67,7 @@ Resolution:
 
 Synchronization Problems
 
-Issue: Databases stuck in "Not Synchronizing" or "Synchronizing" state
+### Issue: Databases stuck in "Not Synchronizing" or "Synchronizing" state
 Symptoms:
 
 - Databases don't move to "Synchronized" state
