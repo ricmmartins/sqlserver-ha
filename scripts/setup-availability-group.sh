@@ -101,7 +101,7 @@ STORAGE_KEY=$(az storage account keys list \
   --account-name $STORAGE_ACCOUNT_NAME \
   --query "[0].value" -o tsv)
 
-# 5. Create SQL VM Group with Basic Availability Groups enabled
+# 5. Create SQL VM Group with Standard edition
 az sql vm group create \
   --name $AG_NAME \
   --resource-group $RESOURCE_GROUP \
@@ -112,8 +112,7 @@ az sql vm group create \
   --operator-acc $ADMIN_USERNAME \
   --service-acc $ADMIN_USERNAME \
   --sa-key "$STORAGE_KEY" \
-  --storage-account "https://${STORAGE_ACCOUNT_NAME}.blob.core.windows.net/" \
-  --enable-basic-ag
+  --storage-account "https://${STORAGE_ACCOUNT_NAME}.blob.core.windows.net/"
 
 # 6. Add the SQL VMs to the Availability Group
 log "Adding SQL VMs to the availability group..."
