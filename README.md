@@ -546,24 +546,24 @@ log "Refer to docs/validation-guide.md for detailed SQL validation steps."
 
 This guide helps you validate your SQL Server High Availability deployment in Azure. See docs/validation-guide.md for detailed instructions.
 
-Key Validation Areas
+## Key Validation Areas
 
-1. High Availability (Availability Set)
-  - Verify fault domain and update domain configuration
-  - Confirm VM placement within the Availability Set
+1. **High Availability (Availability Set)**
+   - Verify fault domain and update domain configuration
+   - Confirm VM placement within the Availability Set
 
-2. SQL IaaS Agent Extension
-  - Check registration status and configuration
-  - Verify auto-patching settings
+2. **SQL IaaS Agent Extension**
+   - Check registration status and configuration
+   - Verify auto-patching settings
 
-3. Availability Group Configuration
-  - Connect to SQL Server and validate AG status
-  - Check replica synchronization
-  - Test the listener connection
+3. **Availability Group Configuration**
+   - Connect to SQL Server and validate AG status
+   - Check replica synchronization
+   - Test the listener connection
 
-4. Failover Testing
-  - Perform manual failover between replicas
-  - Simulate node failures and observe automatic failover
+4. **Failover Testing**
+   - Perform manual failover between replicas
+   - Simulate node failures and observe automatic failover
 
 ## Best Practices
 
