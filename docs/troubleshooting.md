@@ -39,7 +39,7 @@ Resolution:
 - Ensure SQL Service account has necessary permissions
 - If using domain accounts, ensure they're properly configured
 
-Issue: "The operation failed because the cluster does not exist"
+### Issue: "The operation failed because the cluster does not exist"
 
 Symptoms:
 
