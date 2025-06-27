@@ -282,17 +282,17 @@ Expected results:
 
 Use this checklist to ensure all aspects are validated:
 
-<input disabled="" type="checkbox"> Availability Set configuration is correct
-<input disabled="" type="checkbox"> SQL IaaS Agent Extension is properly registered
-<input disabled="" type="checkbox"> Network Security Group rules are properly configured
-<input disabled="" type="checkbox"> Load balancer and health probe are correctly configured
-<input disabled="" type="checkbox"> SQL Server AlwaysOn is enabled on both instances
-<input disabled="" type="checkbox"> Availability Group is created and healthy
-<input disabled="" type="checkbox"> Replicas show proper synchronization health
-<input disabled="" type="checkbox"> AG Listener is created and responding
-<input disabled="" type="checkbox"> Manual failover works correctly
-<input disabled="" type="checkbox"> Automatic failover works as expected
-<input disabled="" type="checkbox"> Applications can connect via the listener before and after failover
+- [ ] Availability Set configuration is correct
+- [ ] SQL IaaS Agent Extension is properly registered
+- [ ] Network Security Group rules are properly configured
+- [ ] Load balancer and health probe are correctly configured
+- [ ] SQL Server AlwaysOn is enabled on both instances
+- [ ] Availability Group is created and healthy
+- [ ] Replicas show proper synchronization health
+- [ ] AG Listener is created and responding
+- [ ] Manual failover works correctly
+- [ ] Automatic failover works as expected
+- [ ] Applications can connect via the listener before and after failover
 
 Troubleshooting
 If you encounter issues during validation, refer to the troubleshooting guide at troubleshooting.md.
