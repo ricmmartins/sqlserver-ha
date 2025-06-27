@@ -26,6 +26,7 @@ This repository contains scripts and documentation for deploying and validating 
 
 1. **Deploy SQL Server VMs**
 The [deploy-sql-ha.sh](scripts/deploy-sql-ha.sh) fully automates the deployment of a production-ready, highly available SQL Server environment on Azure. Here’s what the script sets up:
+   - Verify fault domain and update domain configuration
   - **Resource Group** with detailed tags for ownership and cost management  
   - **Virtual Network (VNet)** and **subnet** for secure isolation  
   - **Network Security Group (NSG)** with rules for RDP, SQL, and AG endpoints  
