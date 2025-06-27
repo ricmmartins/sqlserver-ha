@@ -544,7 +544,7 @@ log "Refer to docs/validation-guide.md for detailed SQL validation steps."
 
 ## Detailed Validation Guide
 
-This guide helps you validate your SQL Server High Availability deployment in Azure. See docs/validation-guide.md for detailed instructions.
+This guide helps you validate your SQL Server High Availability deployment in Azure. See [docs/validation-guide.md](docs/validation-guide.md) for detailed instructions.
 
 ## Key Validation Areas
 
