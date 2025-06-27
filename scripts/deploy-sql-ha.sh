@@ -1,35 +1,65 @@
 #!/bin/bash
 
 # Azure SQL VM HA Deployment using AZ CLI
+# This script deploys SQL Server VMs in an availability set configuration
+# with proper settings for high availability
 
-# Set error handling and enable command tracing for troubleshooting
+# Set error handling and verbose logging
 set -e
-# Uncomment for verbose debugging
-# set -x 
+exec > >(tee -i deployment.log)
+exec 2>&1
 
-# Variables - Resource names with better naming conventions
+echo "Starting SQL High Availability deployment: $(date)"
+
+# Variables - Resource names
 TIMESTAMP=$(date +%s)
-RESOURCE_GROUP="rg-sqlha-demo-${TIMESTAMP}"
-LOCATION="eastus2"
-VNET_NAME="vnet-sqlha-${TIMESTAMP}"
-SUBNET_NAME="snet-sql-${TIMESTAMP}"
-NSG_NAME="nsg-sql-${TIMESTAMP}"
-AVSET_NAME="avset-sql-${TIMESTAMP}"
+RESOURCE_GROUP="rg-sql-ha-demo"
+LOCATION="centralus"
+VNET_NAME="vnet-sql-ha"
+SUBNET_NAME="subnet-sql"
+NSG_NAME="nsg-sql-ha"
+AVSET_NAME="avset-sql-ha"
 VM_PREFIX="sqlvm"
 ADMIN_USERNAME="sqladmin"
-LOG_FILE="sql-ha-deploy-${TIMESTAMP}.log"
+KV_NAME="kv-sqlha-${TIMESTAMP}"
+TAGS="environment=production application=sqlserver owner=dbteam costcenter=123456"
 
-# Function for logging
-log() {
-    local message="$1"
-    echo "$(date '+%Y-%m-%d %H:%M:%S'): ${message}" | tee -a "${LOG_FILE}"
-}
-
-log "Starting SQL HA deployment"
-
-# Generate a strong random password instead of hardcoding it
+# Generate a strong random password for SQL admin account
 ADMIN_PASSWORD=$(openssl rand -base64 24)
 SQL_IMAGE="MicrosoftSQLServer:SQL2019-WS2022:Standard:latest"
+
+# Function for logging with timestamps
+log() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S'): $1"
+}
+
+# Function to register SQL VM with retry logic
+register_sql_vm() {
+    local vm_name=$1
+    local retries=3
+    local wait_time=30
+    local attempt=1
+    
+    while [ $attempt -le $retries ]; do
+        log "Registering SQL VM $vm_name (Attempt $attempt of $retries)"
+        
+        if az sql vm register \
+            --name $vm_name \
+            --resource-group $RESOURCE_GROUP \
+            --license-type PAYG \
+            --sql-mgmt-type Full; then
+            log "SQL VM $vm_name registered successfully"
+            return 0
+        else
+            log "Registration attempt $attempt failed. Retrying in $wait_time seconds..."
+            sleep $wait_time
+            ((attempt++))
+        fi
+    done
+    
+    log "Failed to register SQL VM $vm_name after $retries attempts"
+    return 1
+}
 
 # Login and set subscription
 log "Authenticating to Azure..."
@@ -42,10 +72,7 @@ log "Using subscription: $SUBSCRIPTION_ID"
 
 # Create resource group with tags
 log "Creating resource group: $RESOURCE_GROUP"
-az group create \
-  --name $RESOURCE_GROUP \
-  --location $LOCATION \
-  --tags 'environment=production' 'application=SQL-HA' 'owner=ITOperations' 'costCenter=12345'
+az group create --name $RESOURCE_GROUP --location $LOCATION --tags $TAGS
 
 # Create VNet and Subnet
 log "Creating virtual network and subnet..."
@@ -56,7 +83,7 @@ az network vnet create \
   --address-prefix 10.0.0.0/16 \
   --subnet-name $SUBNET_NAME \
   --subnet-prefix 10.0.0.0/24 \
-  --tags 'environment=production' 'application=SQL-HA'
+  --tags $TAGS
 
 # Create NSG with required SQL rules
 log "Creating network security group with SQL rules..."
@@ -64,7 +91,7 @@ az network nsg create \
   --resource-group $RESOURCE_GROUP \
   --name $NSG_NAME \
   --location $LOCATION \
-  --tags 'environment=production' 'application=SQL-HA'
+  --tags $TAGS
 
 # Add RDP rule
 log "Creating NSG rule for RDP access..."
@@ -77,8 +104,7 @@ az network nsg rule create \
   --protocol Tcp \
   --access Allow \
   --source-address-prefixes "*" \
-  --destination-address-prefixes "*" \
-  --description "Allow RDP access for administration"
+  --destination-address-prefixes "*"
 
 # Add SQL rule
 log "Creating NSG rule for SQL access..."
@@ -90,23 +116,21 @@ az network nsg rule create \
   --destination-port-ranges 1433 \
   --protocol Tcp \
   --access Allow \
-  --source-address-prefixes "*" \
-  --destination-address-prefixes "*" \
-  --description "Allow SQL Server access"
+  --source-address-prefixes "VirtualNetwork" \
+  --destination-address-prefixes "*"
 
-# Add rule for AG replication
-log "Creating NSG rule for Availability Group replication..."
+# Add Availability Group endpoint rule
+log "Creating NSG rule for AG endpoint..."
 az network nsg rule create \
   --resource-group $RESOURCE_GROUP \
   --nsg-name $NSG_NAME \
-  --name AllowAGReplication \
+  --name AllowAGEndpoint \
   --priority 1002 \
   --destination-port-ranges 5022 \
   --protocol Tcp \
   --access Allow \
-  --source-address-prefixes "*" \
-  --destination-address-prefixes "*" \
-  --description "Allow SQL AG endpoint replication"
+  --source-address-prefixes "VirtualNetwork" \
+  --destination-address-prefixes "*"
 
 # Create Availability Set
 log "Creating availability set..."
@@ -116,96 +140,41 @@ az vm availability-set create \
   --location $LOCATION \
   --platform-fault-domain-count 2 \
   --platform-update-domain-count 5 \
-  --tags 'environment=production' 'application=SQL-HA'
+  --tags $TAGS
 
-# Create data disk configuration function
-create_and_attach_disks() {
-    local vm_name=$1
-    local resource_group=$2
-    
-    # Add data disks for SQL data and log files
-    log "Creating and attaching data disks for $vm_name"
-    
-    # Data disk
-    az vm disk create \
-      --resource-group $resource_group \
-      --name "${vm_name}-data-disk" \
-      --size-gb 512 \
-      --sku Premium_LRS \
-      --tags 'diskType=data' 'application=SQL-HA'
-      
-    az vm disk attach \
-      --resource-group $resource_group \
-      --vm-name $vm_name \
-      --name "${vm_name}-data-disk"
-      
-    # Log disk
-    az vm disk create \
-      --resource-group $resource_group \
-      --name "${vm_name}-log-disk" \
-      --size-gb 256 \
-      --sku Premium_LRS \
-      --tags 'diskType=log' 'application=SQL-HA'
-      
-    az vm disk attach \
-      --resource-group $resource_group \
-      --vm-name $vm_name \
-      --name "${vm_name}-log-disk"
-      
-    # TempDB disk
-    az vm disk create \
-      --resource-group $resource_group \
-      --name "${vm_name}-tempdb-disk" \
-      --size-gb 128 \
-      --sku Premium_LRS \
-      --tags 'diskType=tempdb' 'application=SQL-HA'
-      
-    az vm disk attach \
-      --resource-group $resource_group \
-      --vm-name $vm_name \
-      --name "${vm_name}-tempdb-disk"
-}
+# Create Azure Key Vault for secure credential storage
+log "Creating Azure Key Vault for secure credential storage..."
+az keyvault create \
+  --name $KV_NAME \
+  --resource-group $RESOURCE_GROUP \
+  --location $LOCATION \
+  --enabled-for-disk-encryption true \
+  --enabled-for-deployment true \
+  --sku standard \
+  --tags $TAGS
 
-# Function to register SQL VM with retry capability
-register_sql_vm() {
-    local vm_name=$1
-    local resource_group=$2
-    local max_attempts=3
-    local attempt=1
-    
-    while [ $attempt -le $max_attempts ]; do
-        log "Registering SQL VM: $vm_name (Attempt $attempt of $max_attempts)"
-        
-        if az sql vm register \
-          --name $vm_name \
-          --resource-group $resource_group \
-          --license-type PAYG \
-          --sql-mgmt-type Full \
-          --auto-patching-settings "Enable=true Day=Sunday MaintenanceWindowStartingHour=2 MaintenanceWindowDuration=60"; then
-            
-            log "Successfully registered $vm_name with SQL IaaS extension"
-            return 0
-        else
-            if [ $attempt -lt $max_attempts ]; then
-                log "Failed to register $vm_name. Retrying in 30 seconds..."
-                sleep 30
-            else
-                log "Failed to register $vm_name after $max_attempts attempts."
-                return 1
-            fi
-        fi
-        
-        ((attempt++))
-    done
-}
+# Store SQL admin credentials in Key Vault
+log "Storing credentials in Key Vault..."
+az keyvault secret set \
+  --vault-name $KV_NAME \
+  --name "SqlAdminUsername" \
+  --value "$ADMIN_USERNAME"
+
+az keyvault secret set \
+  --vault-name $KV_NAME \
+  --name "SqlAdminPassword" \
+  --value "$ADMIN_PASSWORD"
 
 # Loop to create two SQL VMs
 log "Creating SQL VMs..."
 for i in 1 2; do
-  VM_NAME="${VM_PREFIX}${i}"
-  IP_NAME="${VM_NAME}-ip"
-  NIC_NAME="${VM_NAME}-nic"
-  DISK_NAME="${VM_NAME}-os-disk"
+  VM_NAME="$VM_PREFIX$i"
+  IP_NAME="$VM_NAME-ip"
+  NIC_NAME="$VM_NAME-nic"
+  OS_DISK_NAME="$VM_NAME-os-disk"
+  DATA_DISK_NAME="$VM_NAME-data-disk"
+  LOG_DISK_NAME="$VM_NAME-log-disk"
+  TEMPDB_DISK_NAME="$VM_NAME-tempdb-disk"
   
   log "Creating VM: $VM_NAME"
 
@@ -215,10 +184,9 @@ for i in 1 2; do
     --name $IP_NAME \
     --sku Standard \
     --allocation-method Static \
-    --version IPv4 \
-    --tags 'environment=production' 'application=SQL-HA'
-  
-  # Create NIC
+    --tags $TAGS
+
+  # Create NIC with accelerated networking for better performance
   az network nic create \
     --resource-group $RESOURCE_GROUP \
     --name $NIC_NAME \
@@ -227,9 +195,10 @@ for i in 1 2; do
     --network-security-group $NSG_NAME \
     --public-ip-address $IP_NAME \
     --accelerated-networking true \
-    --tags 'environment=production' 'application=SQL-HA'
+    --tags $TAGS
 
-  # Create VM with SQL Server image and Premium SSD
+  # Create VM with SQL Server image
+  log "Creating VM $VM_NAME with SQL Server image..."
   az vm create \
     --resource-group $RESOURCE_GROUP \
     --name $VM_NAME \
@@ -240,72 +209,116 @@ for i in 1 2; do
     --admin-password "$ADMIN_PASSWORD" \
     --availability-set $AVSET_NAME \
     --size Standard_D4s_v3 \
-    --storage-sku Premium_LRS \
-    --os-disk-name $DISK_NAME \
+    --os-disk-name $OS_DISK_NAME \
     --os-disk-size-gb 256 \
-    --tags 'environment=production' 'application=SQL-HA' 'role=database'
+    --storage-sku Premium_LRS \
+    --tags $TAGS
 
-  # Create and attach data disks
-  create_and_attach_disks $VM_NAME $RESOURCE_GROUP
+  # Add data disk for SQL data files with read caching for better performance
+  log "Adding data disk for SQL data files..."
+  az vm disk attach \
+    --resource-group $RESOURCE_GROUP \
+    --vm-name $VM_NAME \
+    --name $DATA_DISK_NAME \
+    --new \
+    --size-gb 512 \
+    --sku Premium_LRS \
+    --caching ReadOnly \
+    --lun 0
 
-  # Register SQL VM with IaaS extension - using the correct command
-  register_sql_vm $VM_NAME $RESOURCE_GROUP
+  # Add log disk for SQL log files with no caching for durability
+  log "Adding log disk for SQL log files..."
+  az vm disk attach \
+    --resource-group $RESOURCE_GROUP \
+    --vm-name $VM_NAME \
+    --name $LOG_DISK_NAME \
+    --new \
+    --size-gb 256 \
+    --sku Premium_LRS \
+    --caching None \
+    --lun 1
+
+  # Add tempdb disk for SQL tempdb files with read/write caching
+  log "Adding tempdb disk for SQL tempdb files..."
+  az vm disk attach \
+    --resource-group $RESOURCE_GROUP \
+    --vm-name $VM_NAME \
+    --name $TEMPDB_DISK_NAME \
+    --new \
+    --size-gb 128 \
+    --sku Premium_LRS \
+    --caching ReadWrite \
+    --lun 2
+
+  # Register VM with SQL IaaS Extension - FIX: Using register instead of create
+  register_sql_vm $VM_NAME
 done
 
-# Store credential in Key Vault for production use
-log "Creating Key Vault for credentials..."
-KV_NAME="kv-sqlha-${TIMESTAMP}"
+# Configure backup for the VMs
+log "Configuring Azure Backup for SQL VMs..."
+VAULT_NAME="rsv-sql-ha"
 
-az keyvault create \
-  --name $KV_NAME \
+# Create Recovery Services Vault
+az backup vault create \
+  --name $VAULT_NAME \
   --resource-group $RESOURCE_GROUP \
   --location $LOCATION \
-  --enable-rbac-authorization true \
-  --enabled-for-disk-encryption true \
-  --sku Premium \
-  --tags 'environment=production' 'application=SQL-HA'
+  --tags $TAGS
 
-# Get current user object ID for Key Vault access policy
-USER_OBJECT_ID=$(az ad signed-in-user show --query id -o tsv)
+# Create backup policy
+az backup policy create \
+  --name "DailyBackupPolicy" \
+  --vault-name $VAULT_NAME \
+  --resource-group $RESOURCE_GROUP \
+  --backup-management-type AzureIaasVM \
+  --workload-type VM \
+  --policy '{"schedulePolicy":{"schedulePolicyType":"SimpleSchedulePolicy","scheduleRunFrequency":"Daily","scheduleRunTimes":["2019-09-20T00:30:00Z"],"scheduleWeeklyFrequency":0},"retentionPolicy":{"retentionPolicyType":"LongTermRetentionPolicy","dailySchedule":{"retentionTimes":["2019-09-20T00:30:00Z"],"retentionDuration":{"count":30,"durationType":"Days"}}},"timeZone":"UTC"}'
 
-# Assign RBAC role to current user
-az role assignment create \
-  --role "Key Vault Administrator" \
-  --assignee $USER_OBJECT_ID \
-  --scope $(az keyvault show --name $KV_NAME --resource-group $RESOURCE_GROUP --query id -o tsv)
+# Enable backup for each VM
+for i in 1 2; do
+  VM_NAME="$VM_PREFIX$i"
+  log "Enabling backup for $VM_NAME..."
+  
+  az backup protection enable-for-vm \
+    --resource-group $RESOURCE_GROUP \
+    --vault-name $VAULT_NAME \
+    --vm $VM_NAME \
+    --policy-name "DailyBackupPolicy"
+done
 
-# Store SQL admin credentials in Key Vault
-az keyvault secret set \
-  --vault-name $KV_NAME \
-  --name "SQLAdminUsername" \
-  --value "$ADMIN_USERNAME"
-
-az keyvault secret set \
-  --vault-name $KV_NAME \
-  --name "SQLAdminPassword" \
-  --value "$ADMIN_PASSWORD"
-
-# Create resource locks for production resources
-log "Adding resource locks to protect critical resources..."
-az lock create --name "SQLHAResourceGroupLock" \
+# Add resource lock to prevent accidental deletion
+log "Adding resource lock to protect deployment..."
+az lock create \
+  --name "sql-ha-lock" \
   --resource-group $RESOURCE_GROUP \
   --lock-type CanNotDelete \
-  --notes "Protects SQL HA production environment"
+  --notes "Protected SQL HA environment - do not delete"
 
-# Output deployment information
-log "-------------------------------------"
-log "Deployment completed successfully!"
-log "Resource Group: $RESOURCE_GROUP"
-log "Key Vault: $KV_NAME"
-log "SQL Server VMs: ${VM_PREFIX}1, ${VM_PREFIX}2"
-log "To retrieve credentials:"
-log "Username: az keyvault secret show --vault-name $KV_NAME --name SQLAdminUsername --query value -o tsv"
-log "Password: az keyvault secret show --vault-name $KV_NAME --name SQLAdminPassword --query value -o tsv"
-log "-------------------------------------"
-log "Next steps:"
-log "1. Run setup-availability-group.sh to configure SQL Server Always On"
-log "2. Run validate-ha-deployment.sh to verify your deployment"
-log "-------------------------------------"
+# Set up Azure Monitor alerts for SQL VMs
+log "Configuring monitoring for SQL VMs..."
+ACTION_GROUP_NAME="sql-critical-alerts"
+
+# Create action group for alerts
+az monitor action-group create \
+  --name $ACTION_GROUP_NAME \
+  --resource-group $RESOURCE_GROUP \
+  --short-name "SQLAlerts"
+
+# Create CPU alert rule for each VM
+for i in 1 2; do
+  VM_NAME="$VM_PREFIX$i"
+  VM_ID=$(az vm show --resource-group $RESOURCE_GROUP --name $VM_NAME --query id -o tsv)
+  
+  az monitor metrics alert create \
+    --name "${VM_NAME}-high-cpu" \
+    --resource-group $RESOURCE_GROUP \
+    --scopes $VM_ID \
+    --condition "avg Percentage CPU > 80 where TimeGrain = PT5M" \
+    --window-size 5m \
+    --evaluation-frequency 1m \
+    --action $ACTION_GROUP_NAME \
+    --description "Alert when CPU exceeds 80% for 5 minutes"
+done
 
 # Save important variables for other scripts
 cat > deployment-variables.sh << EOF
@@ -317,6 +330,28 @@ export VNET_NAME="${VNET_NAME}"
 export SUBNET_NAME="${SUBNET_NAME}"
 export VM_PREFIX="${VM_PREFIX}"
 export KV_NAME="${KV_NAME}"
+export ADMIN_USERNAME="${ADMIN_USERNAME}"
+# Use Key Vault to retrieve password:
+# export ADMIN_PASSWORD=\$(az keyvault secret show --vault-name $KV_NAME --name SqlAdminPassword --query value -o tsv)
 EOF
 
 chmod +x deployment-variables.sh
+
+# Output deployment information
+log "-------------------------------------"
+log "Deployment completed successfully!"
+log "Resource Group: $RESOURCE_GROUP"
+log "Key Vault: $KV_NAME (credentials stored securely here)"
+log "SQL Server VMs: ${VM_PREFIX}1, ${VM_PREFIX}2"
+log ""
+log "To retrieve credentials securely:"
+log "Admin Username: az keyvault secret show --vault-name $KV_NAME --name SqlAdminUsername --query value -o tsv"
+log "Admin Password: az keyvault secret show --vault-name $KV_NAME --name SqlAdminPassword --query value -o tsv"
+log "-------------------------------------"
+log "Next steps:"
+log "1. Configure SQL Server Always On Availability Group"
+log "2. Set up AG listener with internal load balancer"
+log "3. Configure SQL database backups within the AG"
+log "4. Review monitoring and alert configurations"
+log "-------------------------------------"
+echo "End of deployment: $(date)"
