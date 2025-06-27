@@ -33,7 +33,7 @@ Get-LocalGroupMember -Group "Administrators" | Select-Object Name
 Get-WmiObject win32_service | Where-Object {$_.Name -eq "MSSQLSERVER"} | Select-Object StartName
 ```
 
-Resolution:
+**Resolution:**
 
 - Ensure the account used in --bootstrap-account parameter has local admin rights
 - Ensure SQL Service account has necessary permissions
@@ -41,11 +41,11 @@ Resolution:
 
 ### Issue: "The operation failed because the cluster does not exist"
 
-Symptoms:
+**Symptoms:**
 
 - AG creation fails with cluster errors
 
-Troubleshooting:
+**Troubleshooting:** 
 
 1. Check if cluster service is running:
 
@@ -59,7 +59,7 @@ Get-Service -Name ClusSvc
 Get-NetFirewallRule | Where-Object {$_.DisplayGroup -like "*Clustering*"}
 ```
 
-Resolution:
+**Resolution:**
 
 - Create cluster first using az sql vm group create command
 - Ensure firewall allows cluster traffic
@@ -68,12 +68,13 @@ Resolution:
 ## Synchronization Problems
 
 ### Issue: Databases stuck in "Not Synchronizing" or "Synchronizing" state
-Symptoms:
+
+**Symptoms:**
 
 - Databases don't move to "Synchronized" state
 - Synchronization health shows as "NOT_HEALTHY"
 
-Troubleshooting:
+**Troubleshooting:**
 
 1. Check synchronization status:
 
@@ -96,7 +97,7 @@ WHERE
 ```sql
 SELECT * FROM sys.dm_exec_requests WHERE blocking_session_id > 0
 ```
-Resolution:
+**Resolution:**
 
 - Resume data movement if suspended
 
@@ -110,12 +111,12 @@ ALTER DATABASE [YourDatabase] SET HADR RESUME
 
 ### Issue: High latency or slow synchronization
 
-Symptoms:
+**Symptoms:**
 
 - Large log_send_queue_size or redo_queue_size
 - Synchronization takes longer than expected
 
-Troubleshooting:
+**Troubleshooting:**
 
 1. Check network performance:
 
@@ -130,23 +131,23 @@ Test-NetConnection -ComputerName SecondaryVM -Port 5022
 SELECT DB_NAME(database_id) AS [Database], log_reuse_wait_desc FROM sys.databases
 ```
 
-Resolution:
+**Resolution:**
 
 - Improve network bandwidth between VMs
 - Consider using Accelerated Networking for VMs
 - Optimize workloads to reduce log generation
 - Consider asynchronous mode if distance/latency is an issue
 
-Failover Issues
+## Failover Issues
 
-Issue: Manual failover fails
+### Issue: Manual failover fails
 
-Symptoms:
+**Symptoms:**
 
 - Failover command completes with errors
 - Secondary doesn't become primary
 
-Troubleshooting:
+**Troubleshooting:**
 
 1. Check synchronization status before failover:
 
@@ -167,20 +168,20 @@ JOIN
 SELECT * FROM sys.dm_hadr_availability_replica_states
 ```
 
-Resolution:
+**Resolution:**
 
 - Ensure synchronization health is HEALTHY before planned failover
 - For forced failover, use WITH FORCE option but be aware of data loss potential
 - Check for active connections blocking the failover
 
-Issue: Automatic failover not occurring
+### Issue: Automatic failover not occurring
 
-Symptoms:
+**Symptoms:**
 
 - Primary becomes unavailable but secondary doesn't take over
 - Applications experience downtime
 
-Troubleshooting:
+**Troubleshooting:**
 
 1. Check AG configuration:
 
@@ -202,23 +203,23 @@ JOIN
 Get-ClusterQuorum
 ```
 
-Resolution:
+**Resolution:**
 
 - Ensure failover mode is set to AUTOMATIC
 - Ensure availability mode is SYNCHRONOUS_COMMIT
 - Configure proper cluster quorum settings
 - Ensure health check timeout is appropriate
 
-Listener Connection Problems
+## Listener Connection Problems
 
-Issue: Cannot connect to AG listener
+### Issue: Cannot connect to AG listener
 
-Symptoms:
+**Symptoms:**
 
 - Connection timeouts when connecting to listener
 - Error 26 - Error Locating Server/Instance Specified
 
-Troubleshooting:
+**Troubleshooting:**
 
 1. Check listener configuration:
 
@@ -239,21 +240,21 @@ az network lb probe list --resource-group $RESOURCE_GROUP --lb-name $LB_NAME -o 
 netstat -ano | findstr :59999
 ```
 
-Resolution:
+**Resolution:**
 
 - Ensure load balancer probe is correctly configured
 - Verify SQL Server is listening on the probe port
 - Check firewall rules allow traffic on both SQL port (1433) and probe port
 - Verify the VMs are in the load balancer backend pool
 
-Issue: Connections disconnecting after failover
+### Issue: Connections disconnecting after failover
 
-Symptoms:
+**Symptoms:**
 
 - Applications lose connections during failover
 - Reconnection attempts fail or timeout
 
-Troubleshooting:
+**Troubleshooting:**
 
 1. Check connection strings used by applications:
   - Verify they include MultiSubnetFailover=True
@@ -265,23 +266,23 @@ Troubleshooting:
 Test-NetConnection -ComputerName <listener_name> -Port 1433
 ```
 
-Resolution:
+**Resolution:**
 
 - Update connection strings to include MultiSubnetFailover=True
 - Increase connection timeouts in applications
 - Implement retry logic in applications
 - Verify the floating IP configuration in load balancer rules
 
-Performance Issues
+## Performance Issues
 
-Issue: High CPU usage on SQL VMs
+### Issue: High CPU usage on SQL VMs
 
-Symptoms:
+**Symptoms:**
 
 - VM shows high CPU utilization
 - Performance degradation across databases
 
-Troubleshooting:
+**Troubleshooting:**
 
 1. Check Azure VM metrics:
 
@@ -309,21 +310,21 @@ ORDER BY
     qs.total_worker_time DESC
 ```
 
-Resolution:
+**Resolution:**
 
 - Scale up VM size for more CPU resources
 - Optimize high-resource queries
 - Implement query performance tuning
 - Consider read-only routing to offload read operations to secondary replicas
 
-Issue: Disk I/O bottlenecks
+### Issue: Disk I/O bottlenecks
 
-Symptoms:
+**Symptoms:**
 
 - High disk latency
 - Timeouts during heavy write operations
 
-Troubleshooting:
+**Troubleshooting:**
 
 1. Check disk metrics:
 
@@ -353,23 +354,23 @@ ORDER BY
     (qs.total_logical_reads + qs.total_logical_writes) DESC
 ```
 
-Resolution:
+**Resolution:**
 
 - Use Premium SSD or Ultra Disk for data and log files
 - Separate data, log, and tempdb files onto different disks
 - Enable read-committed snapshot isolation to reduce blocking
 - Optimize queries with high I/O demands
 
-Azure Infrastructure Issues
+## Azure Infrastructure Issues
 
-Issue: Availability Set Fault Domain Problems
+### Issue: Availability Set Fault Domain Problems
 
-Symptoms:
+**Symptoms:**
 
 - Both VMs located in same fault domain
 - HA not working as expected
 
-Troubleshooting:
+**Troubleshooting:**
 
 1. Check VM distribution:
 
@@ -377,26 +378,26 @@ Troubleshooting:
 az vm list --resource-group $RESOURCE_GROUP --query "[].{Name:name, AvSet:availabilitySet.id, FaultDomain:instanceView.platformFaultDomain}" -o table
 ```
 
-Resolution:
+**Resolution:**
 
 - If VMs are in the same fault domain, recreate one VM in a different fault domain
 - Ensure availability set has at least 2 fault domains configured
 
-Issue: Network Security Group Blocking Communication
+### Issue: Network Security Group Blocking Communication
 
-Symptoms:
+**Symptoms:**
 
 - AG configuration fails
 - Synchronization issues between replicas
 
-Troubleshooting:
+**Troubleshooting:**
 
 1. Verify NSG rules:
 
 ```bash
 az network nsg rule list --resource-group $RESOURCE_GROUP --nsg-name $NSG_NAME -o table
 ```
-Resolution:
+**Resolution:**
 
 - Add NSG rules for required ports:
   - SQL Server (1433)
@@ -404,7 +405,7 @@ Resolution:
   - Windows Cluster (3343)
   - RDP (3389)
  
-General Troubleshooting Steps
+## General Troubleshooting Steps
 
 Check SQL Server Error Logs
 
@@ -419,7 +420,7 @@ Check Windows Event Logs
 # Check System logs for cluster events
 Get-WinEvent -LogName 'System' -MaxEvents 100 | Where-Object { $_.ProviderName -like '*cluster*' }
 
-# Check SQL Server logs
+Check SQL Server logs
 Get-WinEvent -LogName 'Application' -MaxEvents 100 | Where-Object { $_.ProviderName -like '*SQL*' }
 ```
 
@@ -440,7 +441,7 @@ Test-NetConnection -ComputerName <target_vm> -Port 5022
 Test-NetConnection -ComputerName <listener_name> -Port 1433
 ```
 
-Azure Support Resources
+## Azure Support Resources
 
 If you're still experiencing issues after trying these troubleshooting steps:
 
@@ -448,6 +449,3 @@ If you're still experiencing issues after trying these troubleshooting steps:
 2. For critical production issues, call Azure Support directly
 3. Consider engaging the SQL Server Tiger Team for complex issues
 4. Check Azure Status for any service issues affecting your region
-
-
-
