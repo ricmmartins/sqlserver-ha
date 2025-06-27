@@ -108,7 +108,7 @@ az sql vm group create \
   --resource-group $RESOURCE_GROUP \
   --location $LOCATION \
   --image-offer "SQL2019-WS2022" \
-  --image-sku "Standard" \
+  --image-sku "Enterprise" \
   --domain-fqdn "WORKGROUP" \
   --bootstrap-account $ADMIN_USERNAME \
   --password "$ADMIN_PASSWORD" \
