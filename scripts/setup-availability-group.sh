@@ -83,7 +83,10 @@ for i in 1 2; do
 done
 
 # 4. Create a storage account for the SQL AG
-STORAGE_ACCOUNT_NAME="sqlhawitstorage$(date +%s)"
+# Generate a shorter unique name (max 24 chars)
+RANDOM_SUFFIX=$(date +%s | tail -c 8)  # Take only last 8 digits of timestamp
+STORAGE_ACCOUNT_NAME="sqlhast${RANDOM_SUFFIX}"  # Short prefix + suffix
+
 log "Creating storage account ${STORAGE_ACCOUNT_NAME}..."
 az storage account create \
   --name $STORAGE_ACCOUNT_NAME \
