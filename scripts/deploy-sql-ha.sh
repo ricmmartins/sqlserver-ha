@@ -301,21 +301,34 @@ az backup vault create \
   --location $LOCATION \
   --tags $TAGS
 
-# Create backup policy using template-based approach
-log "Creating backup policy..."
+# Wait for VM resources to be fully provisioned in Azure
+log "Waiting for VMs to be fully provisioned before enabling backup..."
+sleep 120  # 2 minute delay
 
-# Enable backup for each VM
+# Enable backup for each VM with error handling
 for i in 1 2; do
   VM_NAME="$VM_PREFIX$i"
   log "Enabling backup for $VM_NAME..."
-
-  az backup protection enable-for-vm \
+  
+  # Get VM resource ID for more reliable reference
+  VM_ID=$(az vm show --resource-group $RESOURCE_GROUP --name $VM_NAME --query id -o tsv)
+  
+  if [ -z "$VM_ID" ]; then
+    log "Error: Could not find VM $VM_NAME. Skipping backup configuration."
+    continue
+  fi
+  
+  # Try to enable backup with error handling
+  if az backup protection enable-for-vm \
     --resource-group $RESOURCE_GROUP \
     --vault-name $VAULT_NAME \
-    --vm $VM_NAME \
-    --policy-name "DefaultPolicy"
+    --vm $VM_ID \
+    --policy-name "DefaultPolicy"; then
+    log "Backup successfully configured for $VM_NAME"
+  else
+    log "Warning: Could not configure backup for $VM_NAME. You will need to set up backup manually."
+  fi
 done
-
 # Add resource lock to prevent accidental deletion
 log "Adding resource lock to protect deployment..."
 az lock create \
