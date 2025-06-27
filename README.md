@@ -43,6 +43,16 @@ The [deploy-sql-ha.sh](scripts/deploy-sql-ha.sh) fully automates the deployment 
 - **Resource lock** to prevent accidental deletion  
 - **Deployment variable file** for easy reuse of environment details  
 
+
+
+2. **Configure SQL Server Availability Group**
+
+After deploying the SQL VMs, set up the Availability Group with the [setup-availability-group.sh](scripts/setup-availability-group.sh) script.
+
+3. **Validate Your Deployment**
+
+After setting up the environment, validate it using the [validate-ha-deployment.sh](scripts/validate-ha-deployment.sh) script.
+
 ---
 
 ### **Azure Best Practices Implemented**
@@ -85,14 +95,6 @@ The [deploy-sql-ha.sh](scripts/deploy-sql-ha.sh) fully automates the deployment 
 - All critical deployment values exported for future scripts or teardown  
 
 ---
-
-2. **Configure SQL Server Availability Group**
-
-After deploying the SQL VMs, set up the Availability Group with the [setup-availability-group.sh](scripts/setup-availability-group.sh) script.
-
-3. **Validate Your Deployment**
-
-After setting up the environment, validate it using the [validate-ha-deployment.sh](scripts/validate-ha-deployment.sh) script.
 
 ## Detailed Validation Guide
 
