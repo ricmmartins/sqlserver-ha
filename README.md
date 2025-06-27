@@ -588,7 +588,7 @@ For Monitoring
 - Implement automated backup verification
 
 ## Troubleshooting
-For common issues and solutions, refer to docs/troubleshooting.md.
+For common issues and solutions, refer to [docs/troubleshooting.md](docs/troubleshooting.md).
 
 Common Issues
 
