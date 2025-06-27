@@ -39,10 +39,10 @@ register_sql_vm() {
     local retries=3
     local wait_time=30
     local attempt=1
-    
+
     while [ $attempt -le $retries ]; do
         log "Registering SQL VM $vm_name (Attempt $attempt of $retries)"
-        
+
         if az sql vm create \
             --name $vm_name \
             --resource-group $RESOURCE_GROUP \
@@ -56,7 +56,7 @@ register_sql_vm() {
             ((attempt++))
         fi
     done
-    
+
     log "Failed to register SQL VM $vm_name after $retries attempts"
     return 1
 }
@@ -162,7 +162,7 @@ if [ -z "$USER_OBJECT_ID" ]; then
     log "Failed to get user object ID. Trying alternative method..."
     # Try to get the user principal name instead
     USER_PRINCIPAL=$(az account show --query user.name -o tsv)
-    
+
     if [ -n "$USER_PRINCIPAL" ]; then
         log "Using user principal: $USER_PRINCIPAL"
         # Use the principal name instead of object ID
@@ -176,7 +176,7 @@ if [ -z "$USER_OBJECT_ID" ]; then
     fi
 else
     log "User Object ID: $USER_OBJECT_ID"
-    
+
     # Create the role assignment using object ID
     az role assignment create \
       --role "Key Vault Secrets Officer" \
@@ -211,7 +211,7 @@ for i in 1 2; do
   DATA_DISK_NAME="$VM_NAME-data-disk"
   LOG_DISK_NAME="$VM_NAME-log-disk"
   TEMPDB_DISK_NAME="$VM_NAME-tempdb-disk"
-  
+
   log "Creating VM: $VM_NAME"
 
   # Create public IP with static allocation
@@ -301,25 +301,19 @@ az backup vault create \
   --location $LOCATION \
   --tags $TAGS
 
-# Create backup policy
-az backup policy create \
-  --name "DailyBackupPolicy" \
-  --vault-name $VAULT_NAME \
-  --resource-group $RESOURCE_GROUP \
-  --backup-management-type AzureIaasVM \
-  --workload-type VM \
-  --policy '{"schedulePolicy":{"schedulePolicyType":"SimpleSchedulePolicy","scheduleRunFrequency":"Daily","scheduleRunTimes":["2019-09-20T00:30:00Z"],"scheduleWeeklyFrequency":0},"retentionPolicy":{"retentionPolicyType":"LongTermRetentionPolicy","dailySchedule":{"retentionTimes":["2019-09-20T00:30:00Z"],"retentionDuration":{"count":30,"durationType":"Days"}}},"timeZone":"UTC"}'
+# Create backup policy using template-based approach
+log "Creating backup policy..."
 
 # Enable backup for each VM
 for i in 1 2; do
   VM_NAME="$VM_PREFIX$i"
   log "Enabling backup for $VM_NAME..."
-  
+
   az backup protection enable-for-vm \
     --resource-group $RESOURCE_GROUP \
     --vault-name $VAULT_NAME \
     --vm $VM_NAME \
-    --policy-name "DailyBackupPolicy"
+    --policy-name "DefaultPolicy"
 done
 
 # Add resource lock to prevent accidental deletion
@@ -344,7 +338,7 @@ az monitor action-group create \
 for i in 1 2; do
   VM_NAME="$VM_PREFIX$i"
   VM_ID=$(az vm show --resource-group $RESOURCE_GROUP --name $VM_NAME --query id -o tsv)
-  
+
   az monitor metrics alert create \
     --name "${VM_NAME}-high-cpu" \
     --resource-group $RESOURCE_GROUP \
