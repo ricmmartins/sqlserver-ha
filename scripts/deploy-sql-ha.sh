@@ -40,9 +40,12 @@ if [ -z "$SUBSCRIPTION_ID" ]; then
 fi
 log "Using subscription: $SUBSCRIPTION_ID"
 
-# Create resource group
+# Create resource group with tags
 log "Creating resource group: $RESOURCE_GROUP"
-az group create --name $RESOURCE_GROUP --location $LOCATION
+az group create \
+  --name $RESOURCE_GROUP \
+  --location $LOCATION \
+  --tags 'environment=production' 'application=SQL-HA' 'owner=ITOperations' 'costCenter=12345'
 
 # Create VNet and Subnet
 log "Creating virtual network and subnet..."
@@ -52,14 +55,16 @@ az network vnet create \
   --location $LOCATION \
   --address-prefix 10.0.0.0/16 \
   --subnet-name $SUBNET_NAME \
-  --subnet-prefix 10.0.0.0/24
+  --subnet-prefix 10.0.0.0/24 \
+  --tags 'environment=production' 'application=SQL-HA'
 
 # Create NSG with required SQL rules
 log "Creating network security group with SQL rules..."
 az network nsg create \
   --resource-group $RESOURCE_GROUP \
   --name $NSG_NAME \
-  --location $LOCATION
+  --location $LOCATION \
+  --tags 'environment=production' 'application=SQL-HA'
 
 # Add RDP rule
 log "Creating NSG rule for RDP access..."
@@ -110,7 +115,89 @@ az vm availability-set create \
   --resource-group $RESOURCE_GROUP \
   --location $LOCATION \
   --platform-fault-domain-count 2 \
-  --platform-update-domain-count 5
+  --platform-update-domain-count 5 \
+  --tags 'environment=production' 'application=SQL-HA'
+
+# Create data disk configuration function
+create_and_attach_disks() {
+    local vm_name=$1
+    local resource_group=$2
+    
+    # Add data disks for SQL data and log files
+    log "Creating and attaching data disks for $vm_name"
+    
+    # Data disk
+    az vm disk create \
+      --resource-group $resource_group \
+      --name "${vm_name}-data-disk" \
+      --size-gb 512 \
+      --sku Premium_LRS \
+      --tags 'diskType=data' 'application=SQL-HA'
+      
+    az vm disk attach \
+      --resource-group $resource_group \
+      --vm-name $vm_name \
+      --name "${vm_name}-data-disk"
+      
+    # Log disk
+    az vm disk create \
+      --resource-group $resource_group \
+      --name "${vm_name}-log-disk" \
+      --size-gb 256 \
+      --sku Premium_LRS \
+      --tags 'diskType=log' 'application=SQL-HA'
+      
+    az vm disk attach \
+      --resource-group $resource_group \
+      --vm-name $vm_name \
+      --name "${vm_name}-log-disk"
+      
+    # TempDB disk
+    az vm disk create \
+      --resource-group $resource_group \
+      --name "${vm_name}-tempdb-disk" \
+      --size-gb 128 \
+      --sku Premium_LRS \
+      --tags 'diskType=tempdb' 'application=SQL-HA'
+      
+    az vm disk attach \
+      --resource-group $resource_group \
+      --vm-name $vm_name \
+      --name "${vm_name}-tempdb-disk"
+}
+
+# Function to register SQL VM with retry capability
+register_sql_vm() {
+    local vm_name=$1
+    local resource_group=$2
+    local max_attempts=3
+    local attempt=1
+    
+    while [ $attempt -le $max_attempts ]; do
+        log "Registering SQL VM: $vm_name (Attempt $attempt of $max_attempts)"
+        
+        if az sql vm register \
+          --name $vm_name \
+          --resource-group $resource_group \
+          --license-type PAYG \
+          --sql-mgmt-type Full \
+          --auto-patching-settings "Enable=true Day=Sunday MaintenanceWindowStartingHour=2 MaintenanceWindowDuration=60"; then
+            
+            log "Successfully registered $vm_name with SQL IaaS extension"
+            return 0
+        else
+            if [ $attempt -lt $max_attempts ]; then
+                log "Failed to register $vm_name. Retrying in 30 seconds..."
+                sleep 30
+            else
+                log "Failed to register $vm_name after $max_attempts attempts."
+                return 1
+            fi
+        fi
+        
+        ((attempt++))
+    done
+}
 
 # Loop to create two SQL VMs
 log "Creating SQL VMs..."
@@ -118,7 +205,7 @@ for i in 1 2; do
   VM_NAME="${VM_PREFIX}${i}"
   IP_NAME="${VM_NAME}-ip"
   NIC_NAME="${VM_NAME}-nic"
-  DISK_NAME="${VM_NAME}-disk"
+  DISK_NAME="${VM_NAME}-os-disk"
   
   log "Creating VM: $VM_NAME"
 
@@ -128,7 +215,8 @@ for i in 1 2; do
     --name $IP_NAME \
     --sku Standard \
     --allocation-method Static \
-    --version IPv4
+    --version IPv4 \
+    --tags 'environment=production' 'application=SQL-HA'
   
   # Create NIC
   az network nic create \
@@ -137,7 +225,9 @@ for i in 1 2; do
     --vnet-name $VNET_NAME \
     --subnet $SUBNET_NAME \
     --network-security-group $NSG_NAME \
-    --public-ip-address $IP_NAME
+    --public-ip-address $IP_NAME \
+    --accelerated-networking true \
+    --tags 'environment=production' 'application=SQL-HA'
 
   # Create VM with SQL Server image and Premium SSD
   az vm create \
@@ -152,42 +242,14 @@ for i in 1 2; do
     --size Standard_D4s_v3 \
     --storage-sku Premium_LRS \
     --os-disk-name $DISK_NAME \
-    --os-disk-size-gb 256
+    --os-disk-size-gb 256 \
+    --tags 'environment=production' 'application=SQL-HA' 'role=database'
 
-  # Add data disks for SQL data and log files
-  az vm disk create \
-    --resource-group $RESOURCE_GROUP \
-    --name "${VM_NAME}-data-disk" \
-    --size-gb 512 \
-    --sku Premium_LRS
-    
-  az vm disk attach \
-    --resource-group $RESOURCE_GROUP \
-    --vm-name $VM_NAME \
-    --name "${VM_NAME}-data-disk"
-    
-  az vm disk create \
-    --resource-group $RESOURCE_GROUP \
-    --name "${VM_NAME}-log-disk" \
-    --size-gb 256 \
-    --sku Premium_LRS
-    
-  az vm disk attach \
-    --resource-group $RESOURCE_GROUP \
-    --vm-name $VM_NAME \
-    --name "${VM_NAME}-log-disk"
+  # Create and attach data disks
+  create_and_attach_disks $VM_NAME $RESOURCE_GROUP
 
-  # Register with SQL IaaS Extension
-  log "Registering SQL VM: $VM_NAME"
-  az sql vm create \
-    --name $VM_NAME \
-    --resource-group $RESOURCE_GROUP \
-    --license-type PAYG \
-    --sql-mgmt-type Full \
-    --enable-auto-patching \
-    --day-of-week Sunday \
-    --maintenance-window-duration 60 \
-    --maintenance-window-starting-hour 2
+  # Register SQL VM with IaaS extension - using the correct command
+  register_sql_vm $VM_NAME $RESOURCE_GROUP
 done
 
 # Store credential in Key Vault for production use
@@ -198,7 +260,10 @@ az keyvault create \
   --name $KV_NAME \
   --resource-group $RESOURCE_GROUP \
   --location $LOCATION \
-  --enable-rbac-authorization true
+  --enable-rbac-authorization true \
+  --enabled-for-disk-encryption true \
+  --sku Premium \
+  --tags 'environment=production' 'application=SQL-HA'
 
 # Get current user object ID for Key Vault access policy
 USER_OBJECT_ID=$(az ad signed-in-user show --query id -o tsv)
@@ -219,6 +284,13 @@ az keyvault secret set \
   --vault-name $KV_NAME \
   --name "SQLAdminPassword" \
   --value "$ADMIN_PASSWORD"
+
+# Create resource locks for production resources
+log "Adding resource locks to protect critical resources..."
+az lock create --name "SQLHAResourceGroupLock" \
+  --resource-group $RESOURCE_GROUP \
+  --lock-type CanNotDelete \
+  --notes "Protects SQL HA production environment"
 
 # Output deployment information
 log "-------------------------------------"
