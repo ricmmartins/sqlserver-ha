@@ -26,7 +26,7 @@ TAGS="environment=production application=sqlserver owner=dbteam costcenter=12345
 
 # Generate a strong random password for SQL admin account
 ADMIN_PASSWORD=$(openssl rand -base64 24)
-SQL_IMAGE="MicrosoftSQLServer:SQL2019-WS2022:Standard:latest"
+SQL_IMAGE="MicrosoftSQLServer:SQL2019-WS2022:Enterprise:latest"
 
 # Function for logging with timestamps
 log() {
