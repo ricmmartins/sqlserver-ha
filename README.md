@@ -125,9 +125,6 @@ Common Issues
 - Performance problems under load
 - Failover failures or unexpected behavior
 
-## License
-MIT
-
 ## Contributing
 Contributions are welcome! Please submit a pull request or open an issue.
 For questions or support, create an issue in this repository.
