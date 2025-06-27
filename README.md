@@ -72,44 +72,44 @@ This guide helps you validate your SQL Server High Availability deployment in Az
 ## Azure SQL Server VM Best Practices Implemented
 
 ### 1. Security
-- **Store credentials in Azure Key Vault** — never in code or output
-- **Use managed identities** for authentication between services
-- **Implement Network Security Groups (NSGs)** with least-privilege access; scope rules only to required ports (SQL, RDP, AG)
-- **Enable Transparent Data Encryption (TDE)** for databases
-- **Use Azure Private Link** for secure connectivity to services
-- **Resource lock** to prevent accidental resource deletion
-- **Generate secure, random passwords** for SQL admin accounts
+- Store credentials in Azure Key Vault — never in code or output
+- Use managed identities for authentication between services
+- Implement Network Security Groups (NSGs) with least-privilege access; scope rules only to required ports (SQL, RDP, AG)
+- Enable Transparent Data Encryption (TDE) for databases
+- Use Azure Private Link for secure connectivity to services
+- Resource lock to prevent accidental resource deletion
+- Generate secure, random passwords for SQL admin accounts
 
 ### 2. Performance
-- **Use Premium SSDs** for SQL Server data, log, and TempDB files
-- **Separate data, log, and TempDB files** onto dedicated disks for best throughput
-- **Place TempDB on the local SSD (D:) drive** for optimal performance
-- **Configure proper autogrowth settings** for database files
-- **Size VMs appropriately** with adequate memory for SQL Server's buffer pool
-- **Enable accelerated networking** for low-latency traffic
-- **Optimize disk caching** per workload:
+- Use Premium SSDs for SQL Server data, log, and TempDB files
+- Separate data, log, and TempDB files onto dedicated disks for best throughput
+- Place TempDB on the local SSD (D:) drive for optimal performance
+- Configure proper autogrowth settings for database files
+- Size VMs appropriately with adequate memory for SQL Server's buffer pool
+- Enable accelerated networking for low-latency traffic
+- Optimize disk caching per workload:
   - *ReadOnly* for data disks
   - *None* for log disks
   - *ReadWrite* for TempDB
 
 ### 3. High Availability
-- **Deploy VMs in an Availability Set** to spread across fault and update domains
-- **Register VMs with the SQL IaaS Agent Extension** (use retry logic for reliability)
-- **Explicitly allow AG endpoint traffic (port 5022) in NSGs**
+- Deploy VMs in an Availability Set to spread across fault and update domains
+- Register VMs with the SQL IaaS Agent Extension (use retry logic for reliability)
+- Explicitly allow AG endpoint traffic (port 5022) in NSGs
 
 ### 4. Manageability & Monitoring
-- **Enable Azure Backup** with a policy for daily VM backups
-- **Configure Azure Monitor** for SQL insights and key metrics (CPU, memory, storage, AG health)
-- **Set up alerts** for performance and availability events
-- **Use SQL Server Extended Events** for advanced performance monitoring
-- **Implement automated backup verification**
-- **Consistent resource tagging** for tracking and automation
-- **Detailed logging** for every deployment step
+- Enable Azure Backup with a policy for daily VM backups
+- Configure Azure Monitor for SQL insights and key metrics (CPU, memory, storage, AG health)
+- Set up alerts for performance and availability events
+- Use SQL Server Extended Events for advanced performance monitoring
+- Implement automated backup verification
+- Consistent resource tagging for tracking and automation
+- Detailed logging for every deployment step
 
 ### 5. Deployment Reliability
-- **Idempotent, robust scripting** (e.g., `set -e`, retry logic for transient Azure API failures)
-- **Wait for RBAC propagation** before storing secrets in Key Vault
-- **Export critical deployment values** for use in future automation or teardown
+- Idempotent, robust scripting (e.g., `set -e`, retry logic for transient Azure API failures)
+- Wait for RBAC propagation before storing secrets in Key Vault
+- Export critical deployment values for use in future automation or teardown
 
 ## Troubleshooting
 For common issues and solutions, refer to [docs/troubleshooting.md](docs/troubleshooting.md).
