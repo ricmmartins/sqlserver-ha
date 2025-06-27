@@ -120,12 +120,12 @@ log "Adding SQL VMs to the availability group..."
 for i in 1 2; do
   VM_NAME="${VM_PREFIX}${i}"
   
-  az sql vm group join \
-    --name $AG_NAME \
+  log "Adding $VM_NAME to group $AG_NAME..."
+  az sql vm add-to-group \
+    --name $VM_NAME \
     --resource-group $RESOURCE_GROUP \
-    --vm-name $VM_NAME \
-    --sql-password "$ADMIN_PASSWORD" \
-    --location $LOCATION
+    --group-name $AG_NAME \
+    --sql-password "$ADMIN_PASSWORD"
 done
 
 # 7. Create the availability group listener
