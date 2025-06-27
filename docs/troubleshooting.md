@@ -65,7 +65,7 @@ Resolution:
 - Ensure firewall allows cluster traffic
 - Check for network connectivity between nodes
 
-Synchronization Problems
+## Synchronization Problems
 
 ### Issue: Databases stuck in "Not Synchronizing" or "Synchronizing" state
 Symptoms:
@@ -108,7 +108,7 @@ ALTER DATABASE [YourDatabase] SET HADR RESUME
 - Verify sufficient disk space for transaction logs
 - Check for long-running transactions blocking log truncation
 
-Issue: High latency or slow synchronization
+### Issue: High latency or slow synchronization
 
 Symptoms:
 
