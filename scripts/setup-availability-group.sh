@@ -113,7 +113,8 @@ az sql vm group create \
   --operator-acc $ADMIN_USERNAME \
   --service-acc $ADMIN_USERNAME \
   --sa-key "$STORAGE_KEY" \
-  --storage-account "https://${STORAGE_ACCOUNT_NAME}.blob.core.windows.net/"
+  --storage-account "https://${STORAGE_ACCOUNT_NAME}.blob.core.windows.net/" \
+  --basic-availability-group
 
 # 6. Add the SQL VMs to the Availability Group
 log "Adding SQL VMs to the availability group..."
