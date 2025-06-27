@@ -24,7 +24,7 @@ This repository contains scripts and documentation for deploying and validating 
 
 ## Deployment Process
 
-1. Deploy SQL Server VMs
+1. **Deploy SQL Server VMs**
 The [deploy-sql-ha.sh](scripts/deploy-sql-ha.sh) script creates:
 
 - Resource group
@@ -33,11 +33,11 @@ The [deploy-sql-ha.sh](scripts/deploy-sql-ha.sh) script creates:
 - Availability Set for high availability
 - Two SQL Server VMs registered with SQL IaaS Agent Extension
 
-2. Configure SQL Server Availability Group
+2. **Configure SQL Server Availability Group**
 
 After deploying the SQL VMs, set up the Availability Group with the [setup-availability-group.sh](scripts/setup-availability-group.sh) script.
 
-3. Validate Your Deployment
+3. **Validate Your Deployment**
 
 After setting up the environment, validate it using the [validate-ha-deployment.sh](scripts/validate-ha-deployment.sh) script.
 
