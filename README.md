@@ -125,6 +125,44 @@ Common Issues
 - Performance problems under load
 - Failover failures or unexpected behavior
 
+## 🚦 Recommendations for Production Deployments
+
+While this project demonstrates a reference high-availability SQL Server setup, **additional steps are required for production-grade environments**. For a production deployment, please consider:
+
+- **Harden Security:**  
+  - Remove public IPs from SQL VMs and rely on private endpoints and jump hosts/bastion for admin access.
+  - Restrict NSG rules to only what’s absolutely necessary.  
+  - Enable Azure Defender for SQL and use advanced threat protection.
+
+- **Identity and Access:**  
+  - Use managed identities for automation and minimize usage of admin credentials.
+  - Implement Just-In-Time (JIT) VM access and Privileged Identity Management (PIM) for admin operations.
+
+- **Backup and DR:**  
+  - Define and test regular backup and restore strategies.
+  - Consider Geo-Redundant backup vaults and geo-replication for business-critical data.
+  - Regularly test failover and restore procedures.
+
+- **High Availability and Resiliency:**  
+  - Use Availability Zones instead of just Availability Sets where possible.
+  - Deploy a domain controller if required for Windows Clustering.
+  - Set up a listener with an Internal Load Balancer for Always On Availability Groups.
+
+- **Monitoring and Alerts:**  
+  - Integrate with Azure Monitor, Log Analytics, and set up actionable alerts on health, backups, and performance.
+  - Enable SQL Server auditing and diagnostic settings.
+
+- **Cost and Performance:**  
+  - Size VMs/disks based on workload; consider Reserved Instances for cost savings.
+  - Use Premium SSDs or Ultra Disks as needed for storage performance.
+
+- **Automation and Governance:**  
+  - Deploy using Infrastructure as Code (IaC), with parameterization for environments.
+  - Apply resource locks, tags, and use policy for governance and compliance.
+
+> For more details, refer to the [Azure SQL VM documentation](https://learn.microsoft.com/en-us/azure/azure-sql/virtual-machines/windows/) and consult with your cloud security and database teams.
+
+
 ## Contributing
 Contributions are welcome! Please submit a pull request or open an issue.
 
