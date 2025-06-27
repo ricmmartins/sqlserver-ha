@@ -124,8 +124,10 @@ for i in 1 2; do
   az sql vm add-to-group \
     --name $VM_NAME \
     --resource-group $RESOURCE_GROUP \
-    --group-name $AG_NAME \
-    --sql-password "$ADMIN_PASSWORD"
+    --sqlvm-group $AG_NAME \
+    --bootstrap-acc-pwd "$ADMIN_PASSWORD" \
+    --operator-acc-pwd "$ADMIN_PASSWORD" \
+    --service-acc-pwd "$ADMIN_PASSWORD"
 done
 
 # 7. Create the availability group listener
