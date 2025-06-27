@@ -338,12 +338,13 @@ az monitor action-group create \
 for i in 1 2; do
   VM_NAME="$VM_PREFIX$i"
   VM_ID=$(az vm show --resource-group $RESOURCE_GROUP --name $VM_NAME --query id -o tsv)
-
+  
+  log "Creating CPU alert for $VM_NAME..."
   az monitor metrics alert create \
     --name "${VM_NAME}-high-cpu" \
     --resource-group $RESOURCE_GROUP \
     --scopes $VM_ID \
-    --condition "avg Percentage CPU > 80 where TimeGrain = PT5M" \
+    --condition "avg Percentage CPU > 80" \
     --window-size 5m \
     --evaluation-frequency 1m \
     --action $ACTION_GROUP_NAME \
