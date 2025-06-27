@@ -125,7 +125,7 @@ Common Issues
 - Performance problems under load
 - Failover failures or unexpected behavior
 
-## 🚦 Recommendations for Production Deployments
+## Recommendations for Production Deployments
 
 While this project demonstrates a reference high-availability SQL Server setup, **additional steps are required for production-grade environments**. For a production deployment, please consider:
 
